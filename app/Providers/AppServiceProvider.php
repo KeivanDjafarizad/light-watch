@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Actions\Commands\Cp3000CommandEncoder;
+use App\Actions\Commands\LuminaP2PCommandEncoder;
+use App\Actions\Commands\VendorCommandEncoderRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +18,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(VendorCommandEncoderRegistry::class, function ($app) {
+            return new VendorCommandEncoderRegistry([
+                $app->make(LuminaP2PCommandEncoder::class),
+                $app->make(Cp3000CommandEncoder::class),
+            ]);
+        });
     }
 
     /**
@@ -24,7 +32,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
     }
+
+    /**
+     * Bring up the whole realtime stack with `composer run dev`:
+     * Reverb (WebSockets), the dashboard broadcast loop and MQTT
+     * ingestion. In production these run under Supervisor instead
+     * (restart-on-crash, see NOTES.md).
+     */
 
     /**
      * Configure default behaviors for production-ready applications.
