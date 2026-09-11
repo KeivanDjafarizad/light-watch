@@ -7,6 +7,7 @@ use App\Actions\Commands\LuminaP2PCommandEncoder;
 use App\Actions\Commands\VendorCommandEncoderRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\DevCommands;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -34,6 +35,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->registerDevProcesses();
+
+        // The dashboard API contracts (PRD §7/§8) are flat: no `data`
+        // wrapper on single resources or collections.
+        JsonResource::withoutWrapping();
     }
 
     /**
