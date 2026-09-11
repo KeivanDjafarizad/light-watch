@@ -1,7 +1,5 @@
 {
-    "agents": [
-        "pi"
-    ],
+    "agents": ["pi"],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
