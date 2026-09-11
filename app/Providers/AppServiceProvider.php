@@ -6,6 +6,7 @@ use App\Actions\Commands\Cp3000CommandEncoder;
 use App\Actions\Commands\LuminaP2PCommandEncoder;
 use App\Actions\Commands\VendorCommandEncoderRegistry;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -32,7 +33,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
-
+        $this->registerDevProcesses();
     }
 
     /**
@@ -41,6 +42,16 @@ class AppServiceProvider extends ServiceProvider
      * ingestion. In production these run under Supervisor instead
      * (restart-on-crash, see NOTES.md).
      */
+    protected function registerDevProcesses(): void
+    {
+        if (! $this->app->runningInConsole()) {
+            return;
+        }
+
+        DevCommands::artisan('reverb:start', 'reverb');
+        DevCommands::artisan('dashboard:broadcast', 'dashboard');
+        DevCommands::artisan('mqtt:listen', 'mqtt');
+    }
 
     /**
      * Configure default behaviors for production-ready applications.
