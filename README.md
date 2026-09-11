@@ -157,10 +157,3 @@ vendor/bin/sail composer ci:check               # all of the CI gates
   (`docker compose ps` in the starter kit) and `MQTT_HOST` resolution
   from inside the app container.
 
-## Production notes
-
-The long-running processes (`reverb:start`, `dashboard:broadcast`,
-`mqtt:listen`, `queue:work`) must be supervised (Supervisor,
-restart-on-crash) exactly like `mqtt:listen` in Part 1 — see NOTES.md for
-the full runbook and the tunables (`config/dashboard.php`,
-`config/vendors.php`).
