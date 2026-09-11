@@ -38,7 +38,12 @@ final class Cp3000Adapter implements VendorAdapter
                 $energyKwh = (float) substr($field, 3);
             } elseif (str_starts_with($field, 'AL:')) {
                 $codes = array_filter(explode(',', substr($field, 3)));
-                $alarms = array_map(fn (string $c) => $this->mapAlarm($c), $codes);
+                $alarms = array_values(array_map(fn (string $c) => $this->mapAlarm($c), $codes));
+            } elseif (str_starts_with($field, 'DI:')) {
+                $digitalIn = (int) substr($field, 3);
+                if (($digitalIn & 0b100) !== 0 && !in_array(AlarmCode::ManualOverride, $alarms, true)) {
+                    $alarms[] = AlarmCode::ManualOverride;
+                }
             }
         }
 
