@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+use Database\Factories\RawMessageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property CarbonImmutable $received_at
+ * @property CarbonImmutable|null $processed_at
+ */
 class RawMessage extends Model
 {
-    /** @use HasFactory<\Database\Factories\RawMessageFactory> */
+    /** @use HasFactory<RawMessageFactory> */
     use HasFactory;
 
     protected $guarded = [];

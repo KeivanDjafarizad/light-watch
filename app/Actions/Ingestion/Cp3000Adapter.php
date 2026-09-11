@@ -2,7 +2,6 @@
 
 namespace App\Actions\Ingestion;
 
-use App\Actions\Ingestion\VendorAdapter;
 use App\Models\AlarmCode;
 use App\Models\Granularity;
 use App\Models\NormalizedEvent;
@@ -28,6 +27,7 @@ final class Cp3000Adapter implements VendorAdapter
         $totalW = 0.0;
         $energyKwh = 0.0;
         $alarms = [];
+        $digitalIn = 0;
 
         foreach (array_slice($parts, 3) as $field) {
             if (str_starts_with($field, 'L')) {
@@ -41,29 +41,38 @@ final class Cp3000Adapter implements VendorAdapter
                 $alarms = array_values(array_map(fn (string $c) => $this->mapAlarm($c), $codes));
             } elseif (str_starts_with($field, 'DI:')) {
                 $digitalIn = (int) substr($field, 3);
-                if (($digitalIn & 0b100) !== 0 && !in_array(AlarmCode::ManualOverride, $alarms, true)) {
-                    $alarms[] = AlarmCode::ManualOverride;
-                }
             }
         }
 
-        $deviceReportedAt = DateTimeImmutable::createFromFormat(
+        // DI: arrives before AL: in the payload, so the synthesized code is
+        // merged after the loop rather than inside it — appending during the
+        // loop would be wiped by the AL: assignment. Bit 2 set → manual
+        // override, even if AL: doesn't repeat it.
+        if (($digitalIn & 0b100) !== 0 && ! in_array(AlarmCode::ManualOverride, $alarms, true)) {
+            $alarms[] = AlarmCode::ManualOverride;
+        }
+
+        $parsed = DateTimeImmutable::createFromFormat(
             'YmdHis', $localTs, new DateTimeZone(self::TZ)
-        )?->setTimezone(new DateTimeZone('UTC')) ?: null;
+        );
+
+        $deviceReportedAt = $parsed === false
+            ? null
+            : $parsed->setTimezone(new DateTimeZone('UTC'));
 
         return [new NormalizedEvent(
-                    vendor: Vendor::Cp3000,
-                    vendorDeviceId: $cabinetCode,
-                    granularity: Granularity::Line,
-                    receivedAt: $receivedAt,
-                    deviceReportedAt: $deviceReportedAt,
-                    powerW: $totalW,
-                    energyWhCumulative: $energyKwh * 1000,
-                    switchState: $totalW > 0 ? SwitchState::On : SwitchState::Off,
-                    alarmCodes: $alarms,
-                    dedupKey: hash('xxh128', $topic . $rawPayload),
-                    rawPayload: ['raw' => $rawPayload],
-                )];
+            vendor: Vendor::Cp3000,
+            vendorDeviceId: $cabinetCode,
+            granularity: Granularity::Line,
+            receivedAt: $receivedAt,
+            deviceReportedAt: $deviceReportedAt,
+            powerW: $totalW,
+            energyWhCumulative: $energyKwh * 1000,
+            switchState: $totalW > 0 ? SwitchState::On : SwitchState::Off,
+            alarmCodes: $alarms,
+            dedupKey: hash('xxh128', $topic.$rawPayload),
+            rawPayload: ['raw' => $rawPayload],
+        )];
     }
 
     private function mapAlarm(string $vendorCode): AlarmCode

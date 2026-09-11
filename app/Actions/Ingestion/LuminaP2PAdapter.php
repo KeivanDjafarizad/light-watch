@@ -29,8 +29,8 @@ final class LuminaP2PAdapter implements VendorAdapter
             powerW: (float) $data['meas']['p'],
             energyWhCumulative: (float) $data['meas']['e_wh'],
             switchState: $this->mapSwitchState($data['st']['relay']),
-            alarmCodes: array_map(fn (string $e) => $this->mapAlarm($e), $data['st']['err']),
-            dedupKey: hash('xxh128', $topic . $rawPayload),
+            alarmCodes: array_values(array_map(fn (string $e) => $this->mapAlarm($e), $data['st']['err'])),
+            dedupKey: hash('xxh128', $topic.$rawPayload),
             rawPayload: $data,
         )];
     }

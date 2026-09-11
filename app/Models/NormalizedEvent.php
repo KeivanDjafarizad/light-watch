@@ -6,6 +6,10 @@ use DateTimeImmutable;
 
 final class NormalizedEvent
 {
+    /**
+     * @param  list<AlarmCode>  $alarmCodes
+     * @param  array<string, mixed>  $rawPayload
+     */
     public function __construct(
         public readonly Vendor $vendor,
         public readonly string $vendorDeviceId,
