@@ -25,6 +25,7 @@ Per riconciliare lo stato, quando viene pubblicato un comando, non viene marcato
 `reconcile_by = now + 10 minutes` (due volte la finestra di reporting di CP3000, tollera un miss o un problema di lettura).
 Dopo ogni lettura del quadro viene chiamato `ReconcilePendingCommands::reconcile()`, questo matcha i command che hanno ancora come stato `sent`
 e `reconcile_by` futuro e li blocca, controllando lo stato per ogni comando:
+
 - on -> switch_state = On
 - off -> switch_state = Off
 - dim -> livello dim riportato = richiesto nel comando
