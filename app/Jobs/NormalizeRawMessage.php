@@ -12,13 +12,14 @@ use Illuminate\Support\Facades\Log;
 class NormalizeRawMessage implements ShouldQueue
 {
     use Queueable;
+
     public int $tries = 3;
+
     public int $backoff = 5;
 
     public function __construct(
         public readonly int $rawMessageId
-    )
-    { }
+    ) {}
 
     /**
      * Execute the job.
@@ -26,7 +27,7 @@ class NormalizeRawMessage implements ShouldQueue
     public function handle(VendorAdapterRegistry $registry, TelemetryNormalizer $normalizer): void
     {
         $raw = RawMessage::find($this->rawMessageId);
-        if (!$raw || $raw->processed_at !== null) {
+        if (! $raw || $raw->processed_at !== null) {
             return;
         }
 

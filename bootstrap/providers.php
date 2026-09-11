@@ -1,7 +1,11 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\FortifyServiceProvider;
+use App\Providers\IngestionServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\FortifyServiceProvider::class,
-    App\Providers\IngestionServiceProvider::class,
+    AppServiceProvider::class,
+    FortifyServiceProvider::class,
+    IngestionServiceProvider::class,
 ];
