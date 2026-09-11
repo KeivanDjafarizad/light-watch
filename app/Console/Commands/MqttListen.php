@@ -2,13 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\NormalizeRawMessage;
+use App\Models\RawMessage;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
 use PhpMqtt\Client\ConnectionSettings;
 use PhpMqtt\Client\MqttClient;
-use Symfony\Component\Mime\RawMessage;
 
 #[Signature('mqtt:listen')]
 #[Description('Ascolta i topic del campo e logga i messaggi')]
@@ -56,13 +57,14 @@ class MqttListen extends Command
         $dedupKey = hash('xxh128', $topic . $payload);
 
         try {
-            RawMessage::create([
+            $rawMessage = RawMessage::create([
                'lot' => $lot,
                'topic' => $topic,
                'payload' => $payload,
                'received_at' => $receivedAt,
                'dedup_key' => $dedupKey,
             ]);
+            NormalizeRawMessage::dispatch($rawMessage->id);
             $this->line("[{$receivedAt->toIso8601String()}] [{$lot}] saved: {$topic} }]");
         } catch (QueryException $e) {
             if ($e->getCode() === '23000') {

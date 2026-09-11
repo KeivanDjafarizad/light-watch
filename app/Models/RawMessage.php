@@ -11,4 +11,12 @@ class RawMessage extends Model
     use HasFactory;
 
     protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'received_at' => 'immutable_datetime',
+            'processed_at' => 'immutable_datetime',
+        ];
+    }
 }
