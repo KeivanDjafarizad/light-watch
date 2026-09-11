@@ -26,11 +26,6 @@ final class TelemetryNormalizer
                 ['granularity' => $event->granularity->value],
             );
 
-            // lockForUpdate: nessun altro worker può leggere/scrivere lo stato
-            // di QUESTO device finché la transazione non chiude. Necessario perché
-            // avremo più worker di coda in parallelo — senza il lock, due letture
-            // quasi simultaneee dello stesso device potrebbero basarsi sullo stesso
-            // "ultimo valore noto" e calcolare due delta entrambi sbagliati.
             $state = DeviceState::lockForUpdate()->find($device->id)
                 ?? DeviceState::create(['device_id' => $device->id]);
 
@@ -55,13 +50,11 @@ final class TelemetryNormalizer
                 ]);
             } catch (QueryException $e) {
                 if (in_array($e->getCode(), [23000, '23000'], true)) {
-                    return false; // già processato in un retry precedente: idempotente, non è un errore
+                    return false; // duplicate dedup_key, already handled by an earlier retry: idempotent, not an error
                 }
                 throw $e;
             }
 
-            // Aggiorno lo stato SEMPRE, anche in caso di reset: il prossimo evento
-            // deve confrontarsi col valore attuale (post-reset), non con quello vecchio.
             $state->update([
                 'last_energy_wh_cumulative' => $event->energyWhCumulative,
                 'last_received_at' => $event->receivedAt,
@@ -70,17 +63,11 @@ final class TelemetryNormalizer
                 'last_switch_state' => $event->switchState->value,
             ]);
 
-            // Ciclo di vita allarmi (PRD §5): dentro la stessa transazione
-            // per-device locked, così "allarmi aperti" è sempre coerente
-            // con l'ultima lettura persistita.
             $this->syncAlarms($device->id, $event->alarmCodes, $event->receivedAt);
 
             return true;
         });
 
-        // Fuori dalla transazione: la riconciliazione dei comandi Lot C
-        // (fire-and-forget) verifica la lettura appena persistita contro
-        // lo stato voluto da eventuali comandi in finestra (PRD §10).
         if ($persisted) {
             $this->reconciler->reconcile($event);
         }
@@ -118,9 +105,10 @@ final class TelemetryNormalizer
     private function computeDelta(?float $previous, ?float $current): array
     {
         return match (true) {
-            $current === null, $previous === null => [null, false],       // evento senza energia (raro, difensivo)
-            // prima lettura in assoluto per questo device
-            $current < $previous => [null, true],      // reset: non calcolo un delta negativo
+            // no energy in the event (rare, defensive), or the device's very first reading
+            $current === null, $previous === null => [null, false],
+            // counter reset: never emit a negative delta
+            $current < $previous => [null, true],
             default => [$current - $previous, false],
         };
     }

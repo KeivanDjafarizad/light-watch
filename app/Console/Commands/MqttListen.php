@@ -13,7 +13,7 @@ use PhpMqtt\Client\ConnectionSettings;
 use PhpMqtt\Client\MqttClient;
 
 #[Signature('mqtt:listen')]
-#[Description('Ascolta i topic del campo e logga i messaggi')]
+#[Description('Listen to the plant MQTT topics and log incoming messages')]
 class MqttListen extends Command
 {
     /**
@@ -27,9 +27,9 @@ class MqttListen extends Command
         $mqtt = new MqttClient($host, $port, 'ingestion-worker-'.uniqid());
         $settings = (new ConnectionSettings)->setKeepAliveInterval(60);
 
-        $this->info("Connessione a mqtt://{$host}:{$port}..");
+        $this->info("Connecting to mqtt://{$host}:{$port}..");
         $mqtt->connect($settings, true);
-        $this->info('Connesso!');
+        $this->info('Connected!');
 
         $mqtt->subscribe('lumina/v2/sanverano/+/telemetry', function (string $topic, string $message) {
             $this->persistRaw('A', $topic, $message);
@@ -69,7 +69,7 @@ class MqttListen extends Command
             $this->line("[{$receivedAt->toIso8601String()}] [{$lot}] saved: {$topic} }]");
         } catch (QueryException $e) {
             if ($e->getCode() === '23000') {
-                $this->line("[{$receivedAt->toIso8601String()}] [{$lot}] duplicato scartato: {$topic}");
+                $this->line("[{$receivedAt->toIso8601String()}] [{$lot}] duplicate discarded: {$topic}");
 
                 return;
             }
