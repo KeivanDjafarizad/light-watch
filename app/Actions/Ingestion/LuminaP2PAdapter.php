@@ -47,7 +47,12 @@ final class LuminaP2PAdapter implements VendorAdapter
     private function mapAlarm(string $vendorCode): AlarmCode
     {
         return match ($vendorCode) {
+            'OVERCURRENT' => AlarmCode::OverCurrent,
+            'OVERVOLT' => AlarmCode::OverVoltage,
+            'UNDERVOLT' => AlarmCode::UnderVoltage,
+            'OVERTEMP' => AlarmCode::OverTemperature,
             'DRIVER_FAULT' => AlarmCode::LampFault,
+            'PF_LOW' => AlarmCode::PowerFactorLow,
             default => AlarmCode::Unknown,
         };
     }

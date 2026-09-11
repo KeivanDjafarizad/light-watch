@@ -64,8 +64,12 @@ final class Cp3000Adapter implements VendorAdapter
     private function mapAlarm(string $vendorCode): AlarmCode
     {
         return match (true) {
-            preg_match('/^PF\d$/', $vendorCode) === 1 => AlarmCode::PhaseLoss,
+            preg_match('/^PF[123]$/', $vendorCode) === 1 => AlarmCode::PhaseLoss,
             $vendorCode === 'DOOR' => AlarmCode::DoorOpen,
+            $vendorCode === 'OC' => AlarmCode::OverCurrent,
+            $vendorCode === 'UV' => AlarmCode::UnderVoltage,
+            $vendorCode === 'MAN' => AlarmCode::ManualOverride,
+            $vendorCode === 'CB' => AlarmCode::BreakerTripped,
             default => AlarmCode::Unknown,
         };
     }
