@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\NormalizeRawMessage;
+use App\Jobs\ProcessLuminaAck;
 use App\Models\RawMessage;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -24,7 +25,7 @@ class MqttListen extends Command
         $port = config('services.mqtt.port');
 
         $mqtt = new MqttClient($host, $port, 'ingestion-worker-'.uniqid());
-        $settings = (new ConnectionSettings())->setKeepAliveInterval(60);
+        $settings = (new ConnectionSettings)->setKeepAliveInterval(60);
 
         $this->info("Connessione a mqtt://{$host}:{$port}..");
         $mqtt->connect($settings, true);
@@ -38,37 +39,38 @@ class MqttListen extends Command
             $this->persistRaw('C', $topic, $message);
         }, MqttClient::QOS_AT_LEAST_ONCE);
 
+        // Lot A command acks (PRD §12): explicit vendor confirmation for
+        // commands issued from the dashboard. Not telemetry — dispatched
+        // straight to the ack processor, no raw_messages row.
+        $mqtt->subscribe('lumina/v2/sanverano/+/ack', function (string $topic, string $message) {
+            ProcessLuminaAck::dispatch($topic, $message);
+            $this->line('['.now()->toIso8601String().'] [ack] '.$topic.' '.$message);
+        }, MqttClient::QOS_AT_LEAST_ONCE);
+
         $mqtt->loop(true);
 
         return self::SUCCESS;
     }
 
-    private function logRaw(string $lot, string $topic, string $payload): void
-    {
-        $receivedAt = now()->toIso8601String();
-
-        $this->line("[{$receivedAt}] {$lot} - {$topic} - {$payload}]");
-        $this->line(' ' . mb_strimwidth($payload, 0, 160, '...'));
-    }
-
     private function persistRaw(string $lot, string $topic, string $payload): void
     {
         $receivedAt = now();
-        $dedupKey = hash('xxh128', $topic . $payload);
+        $dedupKey = hash('xxh128', $topic.$payload);
 
         try {
             $rawMessage = RawMessage::create([
-               'lot' => $lot,
-               'topic' => $topic,
-               'payload' => $payload,
-               'received_at' => $receivedAt,
-               'dedup_key' => $dedupKey,
+                'lot' => $lot,
+                'topic' => $topic,
+                'payload' => $payload,
+                'received_at' => $receivedAt,
+                'dedup_key' => $dedupKey,
             ]);
             NormalizeRawMessage::dispatch($rawMessage->id);
             $this->line("[{$receivedAt->toIso8601String()}] [{$lot}] saved: {$topic} }]");
         } catch (QueryException $e) {
             if ($e->getCode() === '23000') {
                 $this->line("[{$receivedAt->toIso8601String()}] [{$lot}] duplicato scartato: {$topic}");
+
                 return;
             }
             throw $e;
