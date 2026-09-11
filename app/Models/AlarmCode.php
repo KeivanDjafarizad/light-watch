@@ -15,4 +15,14 @@ enum AlarmCode: string
     case BreakerTripped = 'breaker_tripped';
     case ManualOverride = 'manual_override';
     case Unknown = 'unknown';
+
+    public function defaultSeverity(): AlarmSeverity
+    {
+        return match ($this) {
+            self::PhaseLoss, self::BreakerTripped => AlarmSeverity::Critical,
+            self::OverCurrent, self::OverVoltage, self::UnderVoltage, self::OverTemperature, self::LampFault => AlarmSeverity::Warning,
+            self::DoorOpen, self::ManualOverride, self::PowerFactorLow => AlarmSeverity::Info,
+            self::Unknown => AlarmSeverity::Warning,
+        };
+    }
 }
